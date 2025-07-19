@@ -2400,7 +2400,10 @@ impl Build {
                     cmd.args.push("-Wl,-melf_i386".into());
                 }
 
-                if target.arch == "arm" && target.os == "none" && target.abi == "eabihf" {
+                if target.arch == "arm"
+                    && (target.os == "none" || target.os == "blueos")
+                    && target.abi == "eabihf"
+                {
                     cmd.args.push("-mfloat-abi=hard".into())
                 }
                 if target.full_arch.starts_with("thumb") {
@@ -3448,6 +3451,8 @@ impl Build {
                     "aarch64-unknown-linux-gnu" => Some("aarch64-linux-gnu"),
                     "aarch64-unknown-linux-musl" => Some("aarch64-linux-musl"),
                     "aarch64-unknown-netbsd" => Some("aarch64--netbsd"),
+                    "aarch64-unknown-none" => Some("aarch64-none-elf"),
+                    "aarch64-vivo-blueos-newlib" => Some("aarch64-none-elf"),
                     "arm-unknown-linux-gnueabi" => Some("arm-linux-gnueabi"),
                     "armv4t-unknown-linux-gnueabi" => Some("arm-linux-gnueabi"),
                     "armv5te-unknown-linux-gnueabi" => Some("arm-linux-gnueabi"),
@@ -3521,6 +3526,11 @@ impl Build {
                         "riscv32-unknown-elf",
                         "riscv-none-embed",
                     ]),
+                    "riscv64gc-vivo-blueos-newlib" => self.find_working_gnu_prefix(&[
+                        "riscv64-unknown-elf",
+                        "riscv32-unknown-elf",
+                        "riscv-none-embed",
+                    ]),
                     "riscv64imac-unknown-none-elf" => self.find_working_gnu_prefix(&[
                         "riscv64-unknown-elf",
                         "riscv32-unknown-elf",
@@ -3547,9 +3557,11 @@ impl Build {
                     "thumbv7em-none-eabi" => Some("arm-none-eabi"),
                     "thumbv7em-none-eabihf" => Some("arm-none-eabi"),
                     "thumbv7m-none-eabi" => Some("arm-none-eabi"),
+                    "thumbv7m-vivo-blueos-newlibeabi" => Some("arm-none-eabi"),
                     "thumbv8m.base-none-eabi" => Some("arm-none-eabi"),
                     "thumbv8m.main-none-eabi" => Some("arm-none-eabi"),
                     "thumbv8m.main-none-eabihf" => Some("arm-none-eabi"),
+                    "thumbv8m.main-vivo-blueos-newlibeabihf" => Some("arm-none-eabi"),
                     "x86_64-pc-windows-gnu" => Some("x86_64-w64-mingw32"),
                     "x86_64-pc-windows-gnullvm" => Some("x86_64-w64-mingw32"),
                     "x86_64-uwp-windows-gnu" => Some("x86_64-w64-mingw32"),
