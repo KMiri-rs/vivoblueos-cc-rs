@@ -2463,12 +2463,15 @@ impl Build {
                 if target.arch == "riscv32" || target.arch == "riscv64" {
                     // get the 32i/32imac/32imc/64gc/64imac/... part
                     let arch = &target.full_arch[5..];
+                    let features = self.getenv("CARGO_CFG_TARGET_FEATURE");
+                    let features = features.as_deref().map(|f| f.to_string_lossy());
+                    let features = features.as_deref();
                     if arch.starts_with("64") {
                         if matches!(target.os, "linux" | "freebsd" | "netbsd") {
                             cmd.args.push(("-march=rv64gc").into());
                             cmd.args.push("-mabi=lp64d".into());
                         } else {
-                            cmd.args.push(("-march=rv".to_owned() + arch).into());
+                            cmd.args.push(("-march=rv".to_owned() + &riscv_arch(arch, features)).into());
                             cmd.args.push("-mabi=lp64".into());
                         }
                     } else if arch.starts_with("32") {
@@ -2476,7 +2479,7 @@ impl Build {
                             cmd.args.push(("-march=rv32gc").into());
                             cmd.args.push("-mabi=ilp32d".into());
                         } else {
-                            cmd.args.push(("-march=rv".to_owned() + arch).into());
+                            cmd.args.push(("-march=rv".to_owned() + &riscv_arch(arch, features)).into());
                             cmd.args.push("-mabi=ilp32".into());
                         }
                     } else {
@@ -3527,6 +3530,25 @@ impl Build {
                         "riscv-none-embed",
                     ]),
                     "riscv64gc-vivo-blueos-newlib" => self.find_working_gnu_prefix(&[
+                        "riscv-none-elf",
+                        "riscv64-unknown-elf",
+                        "riscv32-unknown-elf",
+                        "riscv-none-embed",
+                    ]),
+                    "riscv64-vivo-blueos" => self.find_working_gnu_prefix(&[
+                        "riscv-none-elf",
+                        "riscv64-unknown-elf",
+                        "riscv32-unknown-elf",
+                        "riscv-none-embed",
+                    ]),
+                    "riscv32-vivo-blueos" => self.find_working_gnu_prefix(&[
+                        "riscv-none-elf",
+                        "riscv64-unknown-elf",
+                        "riscv32-unknown-elf",
+                        "riscv-none-embed",
+                    ]),
+                    "riscv32imc-vivo-blueos" => self.find_working_gnu_prefix(&[
+                        "riscv-none-elf",
                         "riscv64-unknown-elf",
                         "riscv32-unknown-elf",
                         "riscv-none-embed",
@@ -4152,6 +4174,32 @@ impl Default for Build {
 fn fail(s: &str) -> ! {
     eprintln!("\n\nerror occurred in cc-rs: {s}\n\n");
     std::process::exit(1);
+}
+
+/// RISC-V ISA subset used in `-march=rvNN<subset>`.
+///
+/// Usually the subset comes from the target name itself (e.g.
+/// `riscv64gc-unknown-none-elf` -> `gc`). Bare-metal BlueOS targets instead
+/// name only the width (`riscv64-vivo-blueos`), which would produce an
+/// invalid `-march=rv64`, so the subset is derived from the single-letter
+/// features reported by Cargo in that case.
+fn riscv_arch(target_arch: &str, features: Option<&str>) -> String {
+    if target_arch.len() > 2 {
+        return target_arch.to_owned();
+    }
+    let features = features.unwrap_or_default();
+    let has = |f: &str| features.split(',').any(|feature| feature == f);
+    // The base ISA comes first and the single-letter extensions follow in
+    // canonical order, so the alphabetically sorted list Cargo hands us cannot
+    // be appended verbatim (`rv64acm` is rejected by the assembler).
+    let mut isa = String::from(target_arch);
+    isa.push(if has("e") { 'e' } else { 'i' });
+    for feature in ["m", "a", "f", "d", "c", "v"] {
+        if has(feature) {
+            isa.push_str(feature);
+        }
+    }
+    isa
 }
 
 // Use by default minimum available API level
